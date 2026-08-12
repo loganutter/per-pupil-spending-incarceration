@@ -4,3 +4,35 @@ author: "Logan Utter"
 format: html
 editor: visual
 ---
+## Data
+
+This analysis uses panel data covering all 50 U.S. states from 2011 through 2021, giving 550 state-year observations. The dependent variable is the incarceration rate per 100,000 residents, drawn from the Bureau of Justice Statistics. Independent variables come from the National Center for Education Statistics (per-pupil spending, high school graduation rates), FRED (median household income), the Census Bureau (poverty rate, Gini coefficient), the FBI UCR program (law enforcement officers), the Kids Count Data Center (single-parent households), and the National Governors Association (governor party).
+
+d <- read.csv("data/incarceration data.csv")
+
+The raw CSV contains blank rows and two empty columns picked up from the original Excel spreadsheet. Both are removed before analysis. 
+
+d <- d[!is.na(d$Year), ]
+d$X <- NULL
+d$X.1 <- NULL
+
+Median household income and per-pupil spending are stored as text in the raw file because their values contain commas. Both are converted to numeric.
+
+d$Median.Household.Income.... <- as.numeric(gsub("[ ,]", "", d$Median.Household.Income....))
+d$Per.Pupil.Spending..... <- as.numeric(gsub("[ ,]", "", d$Per.Pupil.Spending.....))
+
+The percentage-based variables (high school graduation rate, poverty rate, single-parent households, and the Gini coefficient) are stored as decimals but reported here as percentages, so each is multiplied by 100. This makes the corresponding coefficients interpretable as the effect of a one percentage point change.
+
+d$High.School.Graduation.Rate.... <- d$High.School.Graduation.Rate.... * 100
+d$Poverty.Rate.... <- d$Poverty.Rate.... * 100
+d$Children.Living.in.Single.Parent.Households.... <- d$Children.Living.in.Single.Parent.Households.... * 100
+d$Gini.Index <- d$Gini.Index * 100
+
+R converts spaces and punctuation from the original headers into periods, so column names are shortened for readability. Rows are sorted by state and year.
+
+names(d) <- c("year", "state", "incr", "hsg", "mhi", "gp",
+              "pr", "pps", "sph", "pey", "gc", "leo")
+
+d <- d[order(d$state, d$year), ]
+
+str(d)
