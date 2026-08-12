@@ -1,0 +1,6 @@
+---
+title: "Per Pupil Spending and Incarceration Rates Across U.S. States"
+author: "Logan Utter"
+format: html
+editor: visual
+---
