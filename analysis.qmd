@@ -36,3 +36,35 @@ names(d) <- c("year", "state", "incr", "hsg", "mhi", "gp",
 d <- d[order(d$state, d$year), ]
 
 str(d)
+
+## Summary Statistics
+
+Before estimating the model, the distribution of each variable and its bivariate relationship with the incarceration rate are examined.
+
+summary(d[, 3:12])
+
+Pairwise correlations between the incarceration rate and each independent variable show the direction and strength of each relationship before controlling for other factors.
+
+round(cor(d$incr, d[, 4:12]), 4)
+
+The scatter plot of incarceration rate against per-pupil spending helps illustrate the bivariate relationship between our dependent variable and our main variable of interest.
+
+library(ggplot2)
+
+ggplot(d, aes(x = pps, y = incr)) +
+geom_point(alpha = 0.5) +
+labs(
+  x = "Per-pupil spending ($)",
+  y = "Incarceration rate per 100,000 residents",
+  title = "Incarceration and per-pupil spending, U.S. states 2011-2021"
+)
+
+Poverty rate had the highest correlation coefficient among the independent variables. This bivariate relationship can be observed in the scatter plot below.
+
+ggplot(d, aes(x = pr, y = incr)) +
+geom_point(alpha = 0.5) +
+labs(
+  x = "Poverty rate (%)",
+  y = "Incarceration rate per 100,000 residents",
+  title = "Incarceration and poverty rate, U.S. states 2011-2021"
+)
