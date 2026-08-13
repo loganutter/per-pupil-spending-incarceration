@@ -68,3 +68,10 @@ labs(
   y = "Incarceration rate per 100,000 residents",
   title = "Incarceration and poverty rate, U.S. states 2011-2021"
 )
+
+## Model
+
+The model estimates the relationship between per-pupil spending and the incarceration rate, controlling for educational, economic, political, and law enforcement factors that vary across states and over time. Per-pupil spending and median household income are expressed in logarithmic form, allowing the coefficients to be interpreted in terms of proportional changes rather than dollars.
+
+m <- lm(incr ~ hsg + log(mhi) + gp + pr + log(pps) + sph + pey + gc + leo, data = d)
+summary(m)
