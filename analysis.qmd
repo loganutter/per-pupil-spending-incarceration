@@ -4,6 +4,16 @@ author: "Logan Utter"
 format: html
 editor: visual
 ---
+```{r}
+#| include: false
+library(ggplot2)
+library(lmtest)
+library(car)
+library(plm)
+library(sandwich)
+```
+This document replicates in R an analysis originally conducted in Stata as an undergraduate econometrics project at the University of St. Thomas. The original project was coauthored with Moses Yazachew under the supervision of Dr. Luz Saavedra. The coefficient estimates match closely with the original. Standard errors differ slightly because the Stata and R implementations of the Newey-West estimator apply different small-sample corrections, but the conclusions are unchanged. Where a diagnostic test has no exact R equivalent, the substitution is noted in the text.
+
 ## Data
 
 This analysis uses panel data covering all 50 U.S. states from 2011 through 2021, giving 550 state-year observations. The dependent variable is the incarceration rate per 100,000 residents, drawn from the Bureau of Justice Statistics. Independent variables come from the National Center for Education Statistics (per-pupil spending, high school graduation rates), FRED (median household income), the Census Bureau (poverty rate, Gini coefficient), the FBI UCR program (law enforcement officers), the Kids Count Data Center (single-parent households), and the National Governors Association (governor party).
@@ -49,8 +59,6 @@ round(cor(d$incr, d[, 4:12]), 4)
 
 The scatter plot of incarceration rate against per-pupil spending helps illustrate the bivariate relationship between our dependent variable and our main variable of interest.
 
-library(ggplot2)
-
 ggplot(d, aes(x = pps, y = incr)) +
 geom_point(alpha = 0.5) +
 labs(
@@ -75,3 +83,31 @@ The model estimates the relationship between per-pupil spending and the incarcer
 
 m <- lm(incr ~ hsg + log(mhi) + gp + pr + log(pps) + sph + pey + gc + leo, data = d)
 summary(m)
+
+## Diagnostics
+Four diagnostic tests are run to check for potential issues with the model.
+
+First, the Ramsey RESET test checks for model misspecification and omitted variable bias. A significant result would suggest the model omits relevant nonlinear terms or variables. The test returns an F-statistic of 2.0114,  with a p-value of 0.1113, which means we fail to reject the null hypothesis of correct specification.
+
+resettest(m, power = 2:4)
+
+Next, the Breusch-Pagan test examines whether the variance of the residuals depends on the explanatory variables. The results of this test show a Breusch-Pagan statistic of 57.7 (p<0.001), leading us to reject the null hypothesis of homoscedasticity. This gives strong evidence that the model does not have constant residual variance, so the default standard errors are not valid for inference.
+  The original analysis used White's test in Stata. The Breusch-Pagan test used here examines the same null hypothesis and reaches the same conclusion.
+
+bptest(m)
+
+The Variance Inflation Factor assesses the presence of multicollinearity in the model. The mean variance inflation factor is 2.77, which is well below the conventional threshold of 10, and no individual variable exceeds it. This means multicollinearity does not appear to distort the estimated coefficients.
+The two highest values belong to poverty rate (8.14) and median household income (5.01), which is expected given that the two measure overlapping aspects of state economic conditions. This is worth noting, since when poverty rate is excluded from the model, the coefficient for median household income turns negative as suspected, but is not statistically significant. The positive income coefficient reported below should therefore be interpreted with caution.
+
+vif(m)
+mean(vif(m))
+
+The Wooldridge test for serial correlation tests whether the residuals for a given state are correlated across years. Since the data are panel rather than a single time series, the test accounts for the state grouping. The test returns an F-statistic of 26.02 (p < 0.001), so we reject the null of no first-order serial correlation. Residuals within a state are correlated across years, which means the default standard errors are too small.
+  The R implementation is Wooldridge's test as applied to fixed-effects panels, which differs slightly from the Stata command used originally, but tests the same null hypothesis.
+
+pd <- pdata.frame(d, index = c("state", "year"))
+pwartest(incr ~ hsg + log(mhi) + gp + pr + log(pps) + sph + pey + gc + leo, data = pd)
+
+Since diagnostic testing indicated both heteroscedasticity and autocorrelation in the residuals, Newey-West standard errors are used to correct for both simultaneously.
+
+coeftest(m,vcov = NeweyWest(m, lag = 1, prewhite = FALSE))
