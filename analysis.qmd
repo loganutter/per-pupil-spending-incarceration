@@ -18,47 +18,60 @@ This document replicates in R an analysis originally conducted in Stata as an un
 
 This analysis uses panel data covering all 50 U.S. states from 2011 through 2021, giving 550 state-year observations. The dependent variable is the incarceration rate per 100,000 residents, drawn from the Bureau of Justice Statistics. Independent variables come from the National Center for Education Statistics (per-pupil spending, high school graduation rates), FRED (median household income), the Census Bureau (poverty rate, Gini coefficient), the FBI UCR program (law enforcement officers), the Kids Count Data Center (single-parent households), and the National Governors Association (governor party).
 
+```{r}
 d <- read.csv("data/incarceration data.csv")
+```
 
 The raw CSV contains blank rows and two empty columns picked up from the original Excel spreadsheet. Both are removed before analysis. 
 
+```{r}
 d <- d[!is.na(d$Year), ]
 d$X <- NULL
 d$X.1 <- NULL
+```
 
 Median household income and per-pupil spending are stored as text in the raw file because their values contain commas. Both are converted to numeric.
 
+```{r}
 d$Median.Household.Income.... <- as.numeric(gsub("[ ,]", "", d$Median.Household.Income....))
 d$Per.Pupil.Spending..... <- as.numeric(gsub("[ ,]", "", d$Per.Pupil.Spending.....))
+```
 
 The percentage-based variables (high school graduation rate, poverty rate, single-parent households, and the Gini coefficient) are stored as decimals but reported here as percentages, so each is multiplied by 100. This makes the corresponding coefficients interpretable as the effect of a one percentage point change.
 
+```{r}
 d$High.School.Graduation.Rate.... <- d$High.School.Graduation.Rate.... * 100
 d$Poverty.Rate.... <- d$Poverty.Rate.... * 100
 d$Children.Living.in.Single.Parent.Households.... <- d$Children.Living.in.Single.Parent.Households.... * 100
 d$Gini.Index <- d$Gini.Index * 100
+```
 
 R converts spaces and punctuation from the original headers into periods, so column names are shortened for readability. Rows are sorted by state and year.
 
+```{r}
 names(d) <- c("year", "state", "incr", "hsg", "mhi", "gp",
               "pr", "pps", "sph", "pey", "gc", "leo")
-
 d <- d[order(d$state, d$year), ]
-
 str(d)
+```
 
 ## Summary Statistics
 
 Before estimating the model, the distribution of each variable and its bivariate relationship with the incarceration rate are examined.
 
+```{r}
 summary(d[, 3:12])
+```
 
 Pairwise correlations between the incarceration rate and each independent variable show the direction and strength of each relationship before controlling for other factors.
 
+```{r}
 round(cor(d$incr, d[, 4:12]), 4)
+```
 
 The scatter plot of incarceration rate against per-pupil spending helps illustrate the bivariate relationship between our dependent variable and our main variable of interest.
 
+```{r}
 ggplot(d, aes(x = pps, y = incr)) +
 geom_point(alpha = 0.5) +
 labs(
@@ -66,9 +79,11 @@ labs(
   y = "Incarceration rate per 100,000 residents",
   title = "Incarceration and per-pupil spending, U.S. states 2011-2021"
 )
+```
 
 Poverty rate had the highest correlation coefficient among the independent variables. This bivariate relationship can be observed in the scatter plot below.
 
+```{r}
 ggplot(d, aes(x = pr, y = incr)) +
 geom_point(alpha = 0.5) +
 labs(
@@ -76,38 +91,59 @@ labs(
   y = "Incarceration rate per 100,000 residents",
   title = "Incarceration and poverty rate, U.S. states 2011-2021"
 )
+```
 
 ## Model
 
 The model estimates the relationship between per-pupil spending and the incarceration rate, controlling for educational, economic, political, and law enforcement factors that vary across states and over time. Per-pupil spending and median household income are expressed in logarithmic form, allowing the coefficients to be interpreted in terms of proportional changes rather than dollars.
 
+```{r}
 m <- lm(incr ~ hsg + log(mhi) + gp + pr + log(pps) + sph + pey + gc + leo, data = d)
 summary(m)
+```
 
 ## Diagnostics
 Four diagnostic tests are run to check for potential issues with the model.
 
 First, the Ramsey RESET test checks for model misspecification and omitted variable bias. A significant result would suggest the model omits relevant nonlinear terms or variables. The test returns an F-statistic of 2.0114,  with a p-value of 0.1113, which means we fail to reject the null hypothesis of correct specification.
 
+```{r}
 resettest(m, power = 2:4)
+```
 
 Next, the Breusch-Pagan test examines whether the variance of the residuals depends on the explanatory variables. The results of this test show a Breusch-Pagan statistic of 57.7 (p<0.001), leading us to reject the null hypothesis of homoscedasticity. This gives strong evidence that the model does not have constant residual variance, so the default standard errors are not valid for inference.
   The original analysis used White's test in Stata. The Breusch-Pagan test used here examines the same null hypothesis and reaches the same conclusion.
 
+```{r}
 bptest(m)
+```
 
-The Variance Inflation Factor assesses the presence of multicollinearity in the model. The mean variance inflation factor is 2.77, which is well below the conventional threshold of 10, and no individual variable exceeds it. This means multicollinearity does not appear to distort the estimated coefficients.
-The two highest values belong to poverty rate (8.14) and median household income (5.01), which is expected given that the two measure overlapping aspects of state economic conditions. This is worth noting, since when poverty rate is excluded from the model, the coefficient for median household income turns negative as suspected, but is not statistically significant. The positive income coefficient reported below should therefore be interpreted with caution.
+The variance inflation factor (VIF) assesses the presence of multicollinearity in the model. The mean VIF is 2.77, which is well below the conventional threshold of 10, and no individual variable exceeds it. This means multicollinearity does not appear to distort the estimated coefficients.
+The two highest values belong to poverty rate (8.14) and median household income (5.01), which is expected given that the two measure overlapping aspects of state economic conditions.
 
+```{r}
 vif(m)
 mean(vif(m))
+```
 
 The Wooldridge test for serial correlation tests whether the residuals for a given state are correlated across years. Since the data are panel rather than a single time series, the test accounts for the state grouping. The test returns an F-statistic of 26.02 (p < 0.001), so we reject the null of no first-order serial correlation. Residuals within a state are correlated across years, which means the default standard errors are too small.
   The R implementation is Wooldridge's test as applied to fixed-effects panels, which differs slightly from the Stata command used originally, but tests the same null hypothesis.
 
+```{r}
 pd <- pdata.frame(d, index = c("state", "year"))
 pwartest(incr ~ hsg + log(mhi) + gp + pr + log(pps) + sph + pey + gc + leo, data = pd)
+```
 
 Since diagnostic testing indicated both heteroscedasticity and autocorrelation in the residuals, Newey-West standard errors are used to correct for both simultaneously.
 
+```{r}
 coeftest(m,vcov = NeweyWest(m, lag = 1, prewhite = FALSE))
+```
+
+## Results
+
+The coefficient on log per-pupil spending is -132.08, significant at the 1% level. This negative sign is consistent with the original hypothesis that increased per-pupil spending coincides with lower incarceration rates. Since this variable is in logged form, the coefficient implies that a 1% increase in per-pupil spending is associated with roughly 1.32 fewer incarcerated individuals per 100,000. Putting this into perspective, the sample mean for per-pupil spending is $13,174, making a 1% increase equivalent to $132. If per-pupil spending was 10%, or $1,317 higher at the state level, the model predicts that the state would have 12.6 fewer incarcerated individuals per 100,000. If this hypothetical state had the sample mean incarceration rate of 393.7, this estimated decrease of 12.6 individuals would be equivalent to a 3.4% decrease in statewide incarceration.
+One surprising result is the coefficient on the Gini index. The original hypothesis, supported by the literature, was that states with higher income inequality would have higher incarceration rates. The model suggests the opposite, predicting that a 0.01 increase in the Gini index corresponds with roughly 21 fewer incarcerated individuals per 100,000. Not only is the negative sign unexpected, but the variable is significant at the 1% level. One of the most convincing explanations for this relationship is that it is not due to economic inequality itself, but the policies put forth by states with higher Gini indices. It is plausible that these states have more progressive prison policies focused on post-incarceration support and shorter prison sentences, which would decrease incarceration rates in those areas.
+Another counterintuitive result is the positive coefficient on log median household income, significant at the 10% level. While the idea that states with higher incomes experience higher incarceration rates contradicts economic intuition, there is a clearer explanation in this case. As mentioned in the diagnostics section, the mean VIF is low at 2.77, but median household income and poverty rate stand well above the other variables with values of 5.01 and 8.14 respectively. This is worth noting, since when poverty rate is excluded from the model, the coefficient for median household income turns negative as suspected, but is not statistically significant. The positive income coefficient should therefore be interpreted with caution.
+The variables for poverty rate, single-parent households, and law enforcement officers are all significant at the 1% level. The strong positive relationship between these variables and incarceration is consistent with the hypotheses drawn from the literature review. Conversely, graduation rate and governor party are not statistically distinguishable from zero. The presidential election year indicator is significant only at the 10% level, and its negative sign runs against expectations. This variable may be better specified for the year preceding an election, since the political incentive to appear tough on crime is strongest during the campaign rather than after it.
+Among the significant results, law enforcement officers is the one variable that shares units with the dependent variable, both measured per 100,000 residents, making the coefficient directly comparable. The most helpful interpretation of this coefficient is that roughly three additional officers per 100,000 residents corresponds to one additional incarcerated individual per 100,000. This likely reflects enforcement capacity rather than underlying crime, since more officers means more arrests and prosecutions independent of how much crime is occurring.
