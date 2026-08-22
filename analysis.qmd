@@ -12,7 +12,21 @@ library(car)
 library(plm)
 library(sandwich)
 ```
+
+## Introduction
+
 This document replicates in R an analysis originally conducted in Stata as an undergraduate econometrics project at the University of St. Thomas. The original project was coauthored with Moses Yazachew under the supervision of Dr. Luz Saavedra. The coefficient estimates match closely with the original. Standard errors differ slightly because the Stata and R implementations of the Newey-West estimator apply different small-sample corrections, but the conclusions are unchanged. Where a diagnostic test has no exact R equivalent, the substitution is noted in the text.
+
+The analysis examines the relationship between public education funding and incarceration across U.S. states. The hypothesis is that states spending more per pupil have lower incarceration rates, on the reasoning that better-funded schools improve access to legitimate economic opportunity and reduce the appeal of criminal activity. The model estimates this relationship using panel data on all 50 states from 2011 through 2021, controlling for economic,demographic, political, and law enforcement factors.
+
+## Literature Review
+
+Four papers informed the specification below. Full citations are listed in the references section.
+
+Jacobs and Helms (1996) identify family structure as the strongest predictor of prison admission rates, using out-of-wedlock births as their measure of family breakdown. The share of children living in single-parent households is included here for the same reason. They also find that the occurrence of a presidential election and the strength of the Republican party are linked to higher incarceration, motivating the two political indicators in this model: governor party affiliation and presidential election year.
+Sutton and Routon (2023) examine the effects of poverty and inequality, finding poverty significant across multiple specifications and samples. Poverty rate is included here on that basis, alongside median household income as a standard control for state economic conditions. The authors measure inequality using the Gini index, which is adopted for this analysis as well. It captures the full income distribution in a single figure and is reported consistently across states and years.
+A paper by Thatcher Broyles (2020) went into detail on education related variables and their relationship with crime and incarceration. Broyles found that increases in graduation rates and per-pupil spending coincide with reduced theft, lower crime related costs, and lower incarceration rates. This work by Broyles solidified the evidence of a relationship between per-pupil spending and incarceration. He also made the case for graduation rate, which is added to the specification because schools could spend a lot but if kids don't graduate it might negate the effect so graduation rate is a control for that.
+The fourth influential work by Kaplan and Chalfin examined the effect of law enforcement related factors on incarceration. While the wider literature is mixed on this, Kaplan and Chalfin come to the conclusion that larger police presences deter potential offenders and lead to lower incarceration. Since incarceration rate is conventionally measured per 100,000 residents, the law enforcement variable in the model follows this format for ease of interpretation.
 
 ## Data
 
@@ -69,7 +83,7 @@ Pairwise correlations between the incarceration rate and each independent variab
 round(cor(d$incr, d[, 4:12]), 4)
 ```
 
-The scatter plot of incarceration rate against per-pupil spending helps illustrate the bivariate relationship between our dependent variable and our main variable of interest.
+The scatter plot of incarceration rate against per-pupil spending helps illustrate the bivariate relationship between the dependent variable and main variable of interest.
 
 ```{r}
 ggplot(d, aes(x = pps, y = incr)) +
@@ -105,13 +119,13 @@ summary(m)
 ## Diagnostics
 Four diagnostic tests are run to check for potential issues with the model.
 
-First, the Ramsey RESET test checks for model misspecification and omitted variable bias. A significant result would suggest the model omits relevant nonlinear terms or variables. The test returns an F-statistic of 2.0114,  with a p-value of 0.1113, which means we fail to reject the null hypothesis of correct specification.
+First, the Ramsey RESET test checks for model misspecification and omitted variable bias. A significant result would suggest the model omits relevant nonlinear terms or variables. The test returns an F-statistic of 2.0114, with a p-value of 0.1113, so the null hypothesis of correct specification cannot be rejected.
 
 ```{r}
 resettest(m, power = 2:4)
 ```
 
-Next, the Breusch-Pagan test examines whether the variance of the residuals depends on the explanatory variables. The results of this test show a Breusch-Pagan statistic of 57.7 (p<0.001), leading us to reject the null hypothesis of homoscedasticity. This gives strong evidence that the model does not have constant residual variance, so the default standard errors are not valid for inference.
+Next, the Breusch-Pagan test examines whether the variance of the residuals depends on the explanatory variables. The results of this test show a Breusch-Pagan statistic of 57.7 (p<0.001), leading to rejection of the null hypothesis of homoscedasticity. This gives strong evidence that the model does not have constant residual variance, so the default standard errors are not valid for inference.
   The original analysis used White's test in Stata. The Breusch-Pagan test used here examines the same null hypothesis and reaches the same conclusion.
 
 ```{r}
@@ -126,7 +140,7 @@ vif(m)
 mean(vif(m))
 ```
 
-The Wooldridge test for serial correlation tests whether the residuals for a given state are correlated across years. Since the data are panel rather than a single time series, the test accounts for the state grouping. The test returns an F-statistic of 26.02 (p < 0.001), so we reject the null of no first-order serial correlation. Residuals within a state are correlated across years, which means the default standard errors are too small.
+The Wooldridge test for serial correlation tests whether the residuals for a given state are correlated across years. Since the data are panel rather than a single time series, the test accounts for the state grouping. The test returns an F-statistic of 26.02 (p < 0.001), rejecting the null of no first-order serial correlation. Residuals within a state are correlated across years, which means the default standard errors are too small.
   The R implementation is Wooldridge's test as applied to fixed-effects panels, which differs slightly from the Stata command used originally, but tests the same null hypothesis.
 
 ```{r}
@@ -147,8 +161,8 @@ lmtest::waldtest(m, vcov = NeweyWest(m, lag = 1, prewhite = FALSE))
 The coefficient on log per-pupil spending is -132.08, significant at the 1% level. This negative sign is consistent with the original hypothesis that increased per-pupil spending coincides with lower incarceration rates. Since this variable is in logged form, the coefficient implies that a 1% increase in per-pupil spending is associated with roughly 1.32 fewer incarcerated individuals per 100,000. Putting this into perspective, the sample mean for per-pupil spending is $13,174, making a 1% increase equivalent to $132. If per-pupil spending was 10%, or $1,317 higher at the state level, the model predicts that the state would have 12.6 fewer incarcerated individuals per 100,000. If this hypothetical state had the sample mean incarceration rate of 393.7, this estimated decrease of 12.6 individuals would be equivalent to a 3.4% decrease in statewide incarceration.
 One surprising result is the coefficient on the Gini index. The original hypothesis, supported by the literature, was that states with higher income inequality would have higher incarceration rates. The model suggests the opposite, predicting that a 0.01 increase in the Gini index corresponds with roughly 21 fewer incarcerated individuals per 100,000. Not only is the negative sign unexpected, but the variable is significant at the 1% level. One of the most convincing explanations for this relationship is that it is not due to economic inequality itself, but the policies put forth by states with higher Gini indices. It is plausible that these states have more progressive prison policies focused on post-incarceration support and shorter prison sentences, which would decrease incarceration rates in those areas.
 Another counterintuitive result is the positive coefficient on log median household income, significant at the 10% level. While the idea that states with higher incomes experience higher incarceration rates contradicts economic intuition, there is a clearer explanation in this case. As mentioned in the diagnostics section, the mean VIF is low at 2.77, but median household income and poverty rate stand well above the other variables with values of 5.01 and 8.14 respectively. This is worth noting, since when poverty rate is excluded from the model, the coefficient for median household income turns negative as suspected, but is not statistically significant. The positive income coefficient should therefore be interpreted with caution.
-The variables for poverty rate, single-parent households, and law enforcement officers are all significant at the 1% level. The strong positive relationship between these variables and incarceration is consistent with the hypotheses drawn from the literature review. Conversely, graduation rate and governor party are not statistically distinguishable from zero. The presidential election year indicator is significant only at the 10% level, and its negative sign runs against expectations. This variable may be better specified for the year preceding an election, since the political incentive to appear tough on crime is strongest during the campaign rather than after it.
-Among the significant results, law enforcement officers is the one variable that shares units with the dependent variable, both measured per 100,000 residents, making the coefficient directly comparable. The most helpful interpretation of this coefficient is that roughly three additional officers per 100,000 residents corresponds to one additional incarcerated individual per 100,000. This likely reflects enforcement capacity rather than underlying crime, since more officers means more arrests and prosecutions independent of how much crime is occurring.
+The variables for poverty rate, single-parent households, and law enforcement officers are all significant at the 1% level. The positive signs on poverty and single-parent households are consistent with the hypotheses drawn from the literature review. Conversely, graduation rate and governor party are not statistically distinguishable from zero. The presidential election year indicator is significant only at the 10% level, and its negative sign runs against expectations. This variable may be better specified for the year preceding an election, since the political incentive to appear tough on crime is strongest during the campaign rather than after it.
+Among the significant results, law enforcement officers is the one variable that shares units with the dependent variable, both measured per 100,000 residents, making the coefficient directly comparable. The most helpful interpretation of this coefficient is that roughly three additional officers per 100,000 residents corresponds to one additional incarcerated individual per 100,000. This runs against Kaplan and Chalfin (2019), who find that additional officers reduce incarceration through deterrence. The positive sign here suggests enforcement capacity is the dominating effect.
 The overall fit of the regression model is relatively strong, shown by the R-squared value of 0.4777. This indicates that about 48% of the variation in incarceration rates is explained by the included variables, which is reasonable for cross-state social data where much of the variation reflects unmeasured institutional differences. The Wald test returns an F-statistic of 27.76 (p < 0.001), providing strong evidence against the null that the nine coefficients are jointly zero.
 ##Conclusion
 
