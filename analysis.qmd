@@ -69,7 +69,7 @@ d <- d[order(d$state, d$year), ]
 str(d)
 ```
 
-## Summary Statistics
+### Summary Statistics
 
 Before estimating the model, the distribution of each variable and its bivariate relationship with the incarceration rate are examined.
 
@@ -110,6 +110,25 @@ labs(
 ## Model
 
 The model estimates the relationship between per-pupil spending and the incarceration rate, controlling for educational, economic, political, and law enforcement factors that vary across states and over time. Per-pupil spending and median household income are expressed in logarithmic form, allowing the coefficients to be interpreted in terms of proportional changes rather than dollars.
+
+$$
+INCR_{it} = \beta_0 + \beta_1 HSG_{it} + \beta_2 \ln(MHI_{it}) + \beta_3 GP_{it} + \beta_4 PR_{it} + \beta_5 \ln(PPS_{it}) + \beta_6 SPH_{it} + \beta_7 PEY_{it} + \beta_8 GC_{it} + \beta_9 LEO_{it} + \varepsilon_{it}
+$$
+
+where *i* indexes states and *t* indexes years.
+
+| Variable | Description |
+|----------|-------------|
+| INCR | Incarceration rate per 100,000 residents |
+| HSG | High school graduation rate (%) |
+| MHI | Median household income ($) |
+| GP | Governor party (Republican = 1, other = 0) |
+| PR | Poverty rate (%) |
+| PPS | Per-pupil spending ($) |
+| SPH | Children in single-parent households (%) |
+| PEY | Presidential election year (yes = 1, no = 0) |
+| GC | Gini index (0 to 100) |
+| LEO | Law enforcement officers per 100,000 residents |
 
 ```{r}
 m <- lm(incr ~ hsg + log(mhi) + gp + pr + log(pps) + sph + pey + gc + leo, data = d)
