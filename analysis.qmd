@@ -1,9 +1,10 @@
 ---
 title: "Per Pupil Spending and Incarceration Rates Across U.S. States"
 author: "Logan Utter"
-format: html
+format: gfm
 editor: visual
 ---
+
 ```{r}
 #| include: false
 library(ggplot2)
@@ -15,17 +16,20 @@ library(sandwich)
 
 ## Introduction
 
-This document replicates in R an analysis originally conducted in Stata as an undergraduate econometrics project at the University of St. Thomas. The original project was coauthored with Moses Yazachew under the supervision of Dr. Luz Saavedra. The coefficient estimates match closely with the original. Standard errors differ slightly because the Stata and R implementations of the Newey-West estimator apply different small-sample corrections, but the conclusions are unchanged. Where a diagnostic test has no exact R equivalent, the substitution is noted in the text.
+This document replicates in R an analysis originally conducted in Stata as an undergraduate econometrics project at the University of St. Thomas. The original project was coauthored with Moses Yazachew under the supervision of Dr. Luz Saavedra. The coefficient estimates match closely with the original Stata output. Standard errors differ slightly because the Stata and R implementations of the Newey-West estimator apply different small-sample corrections, but the conclusions are unchanged. Where a diagnostic test has no exact R equivalent, the substitution is noted in the text.
 
-The analysis examines the relationship between public education funding and incarceration across U.S. states. The hypothesis is that states spending more per pupil have lower incarceration rates, on the reasoning that better-funded schools improve access to legitimate economic opportunity and reduce the appeal of criminal activity. The model estimates this relationship using panel data on all 50 states from 2011 through 2021, controlling for economic,demographic, political, and law enforcement factors.
+The analysis examines the relationship between public education funding and incarceration across U.S. states. The hypothesis is that states spending more per pupil have lower incarceration rates, on the reasoning that better-funded schools improve access to legitimate economic opportunity and reduce the appeal of criminal activity. The model estimates this relationship using panel data on all 50 states from 2011 through 2021, controlling for economic, demographic, political, and law enforcement factors.
 
 ## Literature Review
 
 Four papers informed the specification below. Full citations are listed in the Literature Cited section.
 
 Jacobs and Helms (1996) identify family structure as the strongest predictor of prison admission rates, using out-of-wedlock births as their measure of family breakdown. The share of children living in single-parent households is included here for the same reason. They also find that the occurrence of a presidential election and the strength of the Republican party are linked to higher incarceration, motivating the two political indicators in this model: governor party affiliation and presidential election year.
+
 Sutton and Routon (2023) examine the effects of poverty and inequality, finding poverty significant across multiple specifications and samples. Poverty rate is included here on that basis, alongside median household income as a standard control for state economic conditions. The authors measure inequality using the Gini index, which is adopted for this analysis as well. Gini index captures the full income distribution in a single figure and is reported consistently across states and years, making it a convenient choice for analysis.
+
 Broyles (2020) goes into detail on education related variables and their relationship with crime and incarceration. The results show that additional schooling reduces the probability of incarceration and that higher per-pupil spending is associated with reduced theft and lower crime-related costs. This work solidified the evidence of a relationship between per-pupil spending and incarceration, and also prompted the inclusion of high school graduation rate. Graduation rate serves as a check on whether spending translates into educational attainment, since funding increases that do not raise graduation rates may not produce the same effect on incarceration.
+
 Kaplan and Chalfin (2019) examine law enforcement staffing, concluding that a larger police presence deters offenders and reduces incarceration, though the wider literature is mixed. Law enforcement officers per 100,000 residents is included here, matching the units of the dependent variable.
 
 ## Data
@@ -36,7 +40,7 @@ This analysis uses panel data covering all 50 U.S. states from 2011 through 2021
 d <- read.csv("data/incarceration data.csv")
 ```
 
-The raw CSV contains blank rows and two empty columns picked up from the original Excel spreadsheet. Both are removed before analysis. 
+The raw CSV contains blank rows and two empty columns picked up from the original Excel spreadsheet. Both are removed before analysis.
 
 ```{r}
 d <- d[!is.na(d$Year), ]
@@ -111,9 +115,7 @@ labs(
 
 The model estimates the relationship between per-pupil spending and the incarceration rate, controlling for educational, economic, political, and law enforcement factors that vary across states and over time. Per-pupil spending and median household income are expressed in logarithmic form, allowing the coefficients to be interpreted in terms of proportional changes rather than dollars.
 
-$$
-INCR_{it} = \beta_0 + \beta_1 HSG_{it} + \beta_2 \ln(MHI_{it}) + \beta_3 GP_{it} + \beta_4 PR_{it} + \beta_5 \ln(PPS_{it}) + \beta_6 SPH_{it} + \beta_7 PEY_{it} + \beta_8 GC_{it} + \beta_9 LEO_{it} + \varepsilon_{it}
-$$
+$$INCR_{it} = \beta_0 + \beta_1 HSG_{it} + \beta_2 \ln(MHI_{it}) + \beta_3 GP_{it} + \beta_4 PR_{it} + \beta_5 \ln(PPS_{it}) + \beta_6 SPH_{it} + \beta_7 PEY_{it} + \beta_8 GC_{it} + \beta_9 LEO_{it} + \varepsilon_{it}$$
 
 where *i* indexes states and *t* indexes years.
 
@@ -121,10 +123,10 @@ where *i* indexes states and *t* indexes years.
 |----------|-------------|
 | INCR | Incarceration rate per 100,000 residents |
 | HSG | High school graduation rate (%) |
-| MHI | Median household income ($) |
+| MHI | Median household income (\$) |
 | GP | Governor party (Republican = 1, other = 0) |
 | PR | Poverty rate (%) |
-| PPS | Per-pupil spending ($) |
+| PPS | Per-pupil spending (\$) |
 | SPH | Children in single-parent households (%) |
 | PEY | Presidential election year (yes = 1, no = 0) |
 | GC | Gini index (0 to 100) |
@@ -136,6 +138,7 @@ summary(m)
 ```
 
 ## Diagnostics
+
 Four diagnostic tests are run to check for potential issues with the model.
 
 First, the Ramsey RESET test checks for model misspecification and omitted variable bias. A significant result would suggest the model omits relevant nonlinear terms or variables. The test returns an F-statistic of 2.0114, with a p-value of 0.1113, so the null hypothesis of correct specification cannot be rejected.
@@ -144,23 +147,20 @@ First, the Ramsey RESET test checks for model misspecification and omitted varia
 resettest(m, power = 2:4)
 ```
 
-Next, the Breusch-Pagan test examines whether the variance of the residuals depends on the explanatory variables. The results of this test show a Breusch-Pagan statistic of 57.7 (p<0.001), leading to rejection of the null hypothesis of homoscedasticity. This gives strong evidence that the model does not have constant residual variance, so the default standard errors are not valid for inference.
-  The original analysis used White's test in Stata. The Breusch-Pagan test used here examines the same null hypothesis and reaches the same conclusion.
+Next, the Breusch-Pagan test examines whether the variance of the residuals depends on the explanatory variables. The results of this test show a Breusch-Pagan statistic of 57.7 (p\<0.001), leading to rejection of the null hypothesis of homoscedasticity. This gives strong evidence that the model does not have constant residual variance, so the default standard errors are not valid for inference. The original analysis used White's test in Stata. The Breusch-Pagan test used here examines the same null hypothesis and reaches the same conclusion.
 
 ```{r}
 bptest(m)
 ```
 
-The variance inflation factor (VIF) assesses the presence of multicollinearity in the model. The mean VIF is 2.77, which is well below the conventional threshold of 10, and no individual variable exceeds it. This means multicollinearity does not appear to distort the estimated coefficients.
-The two highest values belong to poverty rate (8.14) and median household income (5.01), which is expected given that the two measure overlapping aspects of state economic conditions.
+The variance inflation factor (VIF) assesses the presence of multicollinearity in the model. The mean VIF is 2.77, which is well below the conventional threshold of 10, and no individual variable exceeds it. This means multicollinearity does not appear to distort the estimated coefficients. The two highest values belong to poverty rate (8.14) and median household income (5.01), which is expected given that the two measure overlapping aspects of state economic conditions.
 
 ```{r}
 vif(m)
 mean(vif(m))
 ```
 
-The Wooldridge test for serial correlation tests whether the residuals for a given state are correlated across years. Since the data are panel rather than a single time series, the test accounts for the state grouping. The test returns an F-statistic of 26.02 (p < 0.001), rejecting the null of no first-order serial correlation. Residuals within a state are correlated across years, which means the default standard errors are too small.
-  The R implementation is Wooldridge's test as applied to fixed-effects panels, which differs slightly from the Stata command used originally, but tests the same null hypothesis.
+The Wooldridge test for serial correlation tests whether the residuals for a given state are correlated across years. Since the data are panel rather than a single time series, the test accounts for the state grouping. The test returns an F-statistic of 26.02 (p \< 0.001), rejecting the null of no first-order serial correlation. Residuals within a state are correlated across years, which means the default standard errors are too small. The R implementation is Wooldridge's test as applied to fixed-effects panels, which differs slightly from the Stata command used originally, but tests the same null hypothesis.
 
 ```{r}
 pd <- pdata.frame(d, index = c("state", "year"))
@@ -177,16 +177,24 @@ lmtest::waldtest(m, vcov = NeweyWest(m, lag = 1, prewhite = FALSE))
 
 ## Results
 
-The coefficient on log per-pupil spending is -132.08, significant at the 1% level. This negative sign is consistent with the original hypothesis that increased per-pupil spending coincides with lower incarceration rates. Since this variable is in logged form, the coefficient implies that a 1% increase in per-pupil spending is associated with roughly 1.32 fewer incarcerated individuals per 100,000. Putting this into perspective, the sample mean for per-pupil spending is $13,174, making a 1% increase equivalent to $132. If per-pupil spending was 10%, or $1,317 higher at the state level, the model predicts that the state would have 12.6 fewer incarcerated individuals per 100,000. If this hypothetical state had the sample mean incarceration rate of 393.7, this estimated decrease of 12.6 individuals would be equivalent to a 3.4% decrease in statewide incarceration.
-One surprising result is the coefficient on the Gini index. The original hypothesis, supported by the literature, was that states with higher income inequality would have higher incarceration rates. The model suggests the opposite, predicting that a 0.01 increase in the Gini index corresponds with roughly 21 fewer incarcerated individuals per 100,000. Not only is the negative sign unexpected, but the variable is significant at the 1% level. One of the most convincing explanations for this relationship is that it is not due to economic inequality itself, but the policies put forth by states with higher Gini indices. It is plausible that these states have more progressive prison policies focused on post-incarceration support and shorter prison sentences, which would decrease incarceration rates in those areas.
-Another counterintuitive result is the positive coefficient on log median household income, significant at the 10% level. While the idea that states with higher incomes experience higher incarceration rates contradicts economic intuition, there is a clearer explanation in this case. As mentioned in the diagnostics section, the mean VIF is low at 2.77, but median household income and poverty rate stand well above the other variables with values of 5.01 and 8.14 respectively. This is worth noting, since when poverty rate is excluded from the model, the coefficient for median household income turns negative as suspected, but is not statistically significant. The positive income coefficient should therefore be interpreted with caution.
-The variables for poverty rate, single-parent households, and law enforcement officers are all significant at the 1% level. The positive signs on poverty and single-parent households are consistent with the hypotheses drawn from the literature review. Conversely, graduation rate and governor party are not statistically distinguishable from zero. The presidential election year indicator is significant only at the 10% level, and its negative sign runs against expectations. This variable may be better specified for the year preceding an election, since the political incentive to appear tough on crime is strongest during the campaign rather than after it.
-Among the significant results, law enforcement officers is the one variable that shares units with the dependent variable, both measured per 100,000 residents, making the coefficient directly comparable. The most helpful interpretation of this coefficient is that roughly three additional officers per 100,000 residents corresponds to one additional incarcerated individual per 100,000. This runs against Kaplan and Chalfin (2019), who find that additional officers reduce incarceration through deterrence. The positive sign here suggests enforcement capacity is the dominating effect.
-The overall fit of the regression model is relatively strong, shown by the R-squared value of 0.4777. This indicates that about 48% of the variation in incarceration rates is explained by the included variables, which is reasonable for cross-state social data where much of the variation reflects unmeasured institutional differences. The Wald test returns an F-statistic of 27.76 (p < 0.001), providing strong evidence against the null that the nine coefficients are jointly zero.
-##Conclusion
+The coefficient on log per-pupil spending is -132.08, significant at the 1% level. This negative sign is consistent with the original hypothesis that increased per-pupil spending coincides with lower incarceration rates. Since this variable is in logged form, the coefficient implies that a 1% increase in per-pupil spending is associated with roughly 1.32 fewer incarcerated individuals per 100,000. Putting this into perspective, the sample mean for per-pupil spending is \$13,174, making a 1% increase equivalent to \$132. If per-pupil spending was 10%, or \$1,317 higher at the state level, the model predicts that the state would have 12.6 fewer incarcerated individuals per 100,000. If this hypothetical state had the sample mean incarceration rate of 393.7, this estimated decrease of 12.6 individuals would be equivalent to a 3.4% decrease in statewide incarceration.
 
-The original hypothesis was that higher per-pupil spending would be associated with lower incarceration rates, and the estimates support this. Per-pupil spending is significant at the 1% level, and the magnitude is meaningful at policy-relevant scale, with a 10% increase in spending at the sample mean corresponding to about 12.6 fewer incarcerated individuals per 100,000 residents.
+One surprising result is the coefficient on the Gini index. The original hypothesis, supported by the literature, was that states with higher income inequality would have higher incarceration rates. The model suggests the opposite, predicting that a 0.01 increase in the Gini index corresponds with roughly 21 fewer incarcerated individuals per 100,000. Not only is the negative sign unexpected, but the variable is significant at the 1% level. One of the most convincing explanations for this relationship is that it is not due to economic inequality itself, but the policies put forth by states with higher Gini indices. It is plausible that these states have more progressive prison policies focused on post-incarceration support and shorter prison sentences, which would decrease incarceration rates in those areas.
+
+Another counterintuitive result is the positive coefficient on log median household income, significant at the 10% level. While the idea that states with higher incomes experience higher incarceration rates contradicts economic intuition, there is a clearer explanation in this case. As mentioned in the diagnostics section, the mean VIF is low at 2.77, but median household income and poverty rate stand well above the other variables with values of 5.01 and 8.14 respectively. This is worth noting, since when poverty rate is excluded from the model, the coefficient for median household income turns negative as suspected, but is not statistically significant. The positive income coefficient should therefore be interpreted with caution.
+
+The variables for poverty rate, single-parent households, and law enforcement officers are all significant at the 1% level. The positive signs on poverty and single-parent households are consistent with the hypotheses drawn from the literature review. Conversely, graduation rate and governor party are not statistically distinguishable from zero. The presidential election year indicator is significant only at the 10% level, and its negative sign runs against expectations. This variable may be better specified for the year preceding an election, since the political incentive to appear tough on crime is strongest during the campaign rather than after it.
+
+Among the significant results, law enforcement officers is the one variable that shares units with the dependent variable, both measured per 100,000 residents, making the coefficient directly comparable. The most helpful interpretation of this coefficient is that roughly three additional officers per 100,000 residents corresponds to one additional incarcerated individual per 100,000. This runs against Kaplan and Chalfin (2019), who find that additional officers reduce incarceration through deterrence. The positive sign here suggests enforcement capacity is the dominating effect.
+
+The overall fit of the regression model is relatively strong, shown by the R-squared value of 0.4777. This indicates that about 48% of the variation in incarceration rates is explained by the included variables, which is reasonable for cross-state social data where much of the variation reflects unmeasured institutional differences. The Wald test returns an F-statistic of 27.76 (p \< 0.001), providing strong evidence against the null that the nine coefficients are jointly zero.
+
+## Conclusion
+
+The original hypothesis was that higher per-pupil spending would be associated with lower incarceration rates, and the estimates support this. Per-pupil spending is significant at the 1% level, and the magnitude is meaningful at a policy-relevant scale, with a 10% increase in spending at the sample mean corresponding to about 12.6 fewer incarcerated individuals per 100,000 residents.
+
 Education funding is the main variable of interest, but it is not the largest factor at work. Poverty rate and the share of children in single-parent households both carry larger effects and are estimated more precisely. This does not diminish the case for education funding, but it suggests that spending increases work best alongside policies addressing economic hardship and family stability rather than in isolation.
+
 Several limitations bound what these estimates can support. The eleven-year window is short for variables whose effects accumulate slowly, including governor party and law enforcement staffing, where policy changes may take years to appear in incarceration counts. Reporting at the state level also obscures substantial variation within states, which matters here because school funding and law enforcement practice are largely determined at the municipal level. For this reason, county-level data would allow a more precise estimate. Finally, the model is estimated by pooled OLS without state fixed effects, so the coefficients compare states to one another rather than tracking changes within a single state over time. Permanent differences in state institutions, sentencing policy, and history are absorbed into the estimates rather than controlled for. Because of this, adding state fixed effects is the natural next step.
 
 ## Literature Cited
@@ -195,6 +203,6 @@ Jacobs, D., & Helms, R. E. (1996). Toward a Political Model of Incarceration: A 
 
 Sutton, M., & P. Wesley Routon. (2023). Poverty, Inequality, and Incarceration: Estimates from State- and Prison-Level Data. Journal of Poverty, 1–18. https://doi.org/10.1080/10875549.2023.2235336
 
-Broyles, T. (2020). Can Better Classrooms Lead to Empty Cells? [Review of Can Better Classrooms Lead to Empty Cells? Young Scholar Awards Program 2019–20. https://faithandpubliclife.com/wp-content/uploads/2021/02/Broyles_FINAL.pdf
+Broyles, T. (2020). Can Better Classrooms Lead to Empty Cells? \[Review of Can Better Classrooms Lead to Empty Cells? Young Scholar Awards Program 2019–20. https://faithandpubliclife.com/wp-content/uploads/2021/02/Broyles_FINAL.pdf
 
 Kaplan, J., & Chalfin, A. (2019). More cops, fewer prisoners? Criminology & Public Policy, 18(1), 171–200. https://policingresearch.org/wp-content/uploads/2022/01/More-cops-fewer-prisoners.pdf
