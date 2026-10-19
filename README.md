@@ -6,12 +6,12 @@ This analysis is a replication of a project originally produced in Stata, co-aut
 
 The main limitation is that the model is estimated by pooled OLS without state fixed effects. The estimates therefore describe differences across states rather than changes within them, and should be read as correlational rather than causal. Adding state fixed effects is the natural next step.
 
-# Contents:
+## Contents
 
 - `analysis.qmd` - source document
 - `analysis.md` - rendered output
 - `data/` - compiled dataset, 550 state-year observations
 
-# Reproducing
+## Reproducing
 
 Requires R and Quarto with the packages ggplot2, lmtest, car, plm, and sandwich. Open `analysis.qmd` in RStudio and click Render.
